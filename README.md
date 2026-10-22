@@ -71,12 +71,14 @@ Python 3.11+ is required for the backend. Docker is needed to start the local Po
 cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env        # fill in local development settings as needed
+cp .env.example .env        # keep real credentials and local settings in this ignored file
 cd ..
 docker compose --env-file backend/.env up -d
 cd backend
 uvicorn app.main:app --reload
 ```
+`backend/.env.example` contains only local-development defaults and placeholders. Keep your actual `backend/.env` private; it is ignored by Git and must not be committed. Replace the example database password before using the services outside a local development environment.
+
 The initial API exposes `GET /api/health` and interactive docs at http://localhost:8000/docs. The health route confirms that the API process is responding; database dependency checks will be added with persistence.
 
 ### Frontend
