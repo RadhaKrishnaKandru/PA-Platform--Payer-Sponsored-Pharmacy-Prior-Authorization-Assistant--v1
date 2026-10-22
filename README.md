@@ -71,13 +71,13 @@ Python 3.11+ is required for the backend. Docker is needed to start the local Po
 cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env        # keep real credentials and local settings in this ignored file
+if [ ! -f .env ]; then cp .env.example .env; else echo "Using existing .env"; fi
 cd ..
 docker compose --env-file backend/.env up -d
 cd backend
 uvicorn app.main:app --reload
 ```
-`backend/.env.example` contains only local-development defaults and placeholders. Keep your actual `backend/.env` private; it is ignored by Git and must not be committed. Replace the example database password before using the services outside a local development environment.
+`backend/.env.example` contains only local-development defaults and placeholders. The setup command creates `backend/.env` only when it does not already exist, so it will not overwrite your local settings or credentials. Keep `backend/.env` private; it is ignored by Git and must not be committed. Replace the example database password before using the services outside a local development environment.
 
 The initial API exposes `GET /api/health` and interactive docs at http://localhost:8000/docs. The health route confirms that the API process is responding; database dependency checks will be added with persistence.
 
@@ -98,12 +98,12 @@ Provider message: Generated (fax / email / portal note)
 
 ## Evaluation
 ```bash
-cd backend && python -m tests.eval.run_eval
+cd backend && python -m pytest
 ```
-Runs 15-20 synthetic golden cases (inactive coverage, early refill, duplicate therapy, missing policy, no-PA drug, quantity-limit breach). Reports PA-detection accuracy, gap precision/recall, citation validity, and guardrail pass rate.
+The current automated tests cover the API health endpoint and local Vite CORS behavior. The synthetic golden-case evaluation harness and its accuracy metrics are planned but are not implemented yet.
 
 ## Roadmap
-- **v1 (this version):** core workflow, RAG with citations, FastAPI + React UI, Postgres + Mongo + Chroma, eval harness
+- **v1 (in development):** core workflow, RAG with citations, FastAPI + React UI, Postgres + Mongo + Chroma, eval harness
 - **v2 (planned):** Presidio PHI redaction before LLM calls, immutable audit log (Mongo trace), RBAC, human-approval step, FHIR sandbox integration, pgvector replaces Chroma, CI, threat model mapped to HIPAA Security Rule safeguards, local LLM option
 
 ## Disclaimer
