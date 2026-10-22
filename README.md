@@ -18,7 +18,7 @@ Pharmacists often learn a drug needs PA only after claim rejection, causing trea
 
 ## Architecture
 
-eact UI -> FastAPI -> LangGraph workflow
+React UI -> FastAPI -> LangGraph workflow
 |
 extract -> coverage -> policy (RAG) -> gaps || utilization
 -> guardrail -> provider message -> summary
