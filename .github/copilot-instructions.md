@@ -98,7 +98,7 @@ pa-platform/
 │   └── copilot-instructions.md
 ├── backend/
 │   ├── pyproject.toml
-│   ├── .env.example                # GROQ_API_KEY, POSTGRES_URL, MONGO_URL, CHROMA_DIR
+│   ├── .env               # GROQ_API_KEY, POSTGRES_URL, MONGO_URL, CHROMA_DIR
 │   ├── app/
 │   │   ├── main.py                 # FastAPI entry, CORS
 │   │   ├── config.py               # settings from env
