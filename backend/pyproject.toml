@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pa-platform-backend"
+version = "0.1.0"
+description = "Synthetic-data pharmacy prior authorization assistant backend"
+requires-python = ">=3.11"
+dependencies = [
+    "chromadb>=0.5,<2",
+    "fastapi>=0.115,<1",
+    "langchain-groq>=0.2,<1",
+    "langgraph>=0.2,<2",
+    "pypdf>=5,<7",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "pymongo>=4.10,<5",
+    "psycopg[binary]>=3.2,<4",
+    "python-dotenv>=1.0,<2",
+    "sentence-transformers>=3,<6",
+    "sqlalchemy>=2.0,<3",
+    "uvicorn[standard]>=0.32,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27,<1",
+    "pytest>=8,<9",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

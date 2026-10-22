@@ -64,28 +64,23 @@ pa-platform/
 ## Getting Started
 
 ### Prerequisites
-Python 3.11+, Node 18+, Docker, a free [Groq API key](https://console.groq.com).
+Python 3.11+ is required for the backend. Docker is needed to start the local PostgreSQL and MongoDB services. A Groq API key and Node.js will be needed when the LLM and frontend are implemented.
 
 ### Backend
 ```bash
-docker compose up -d        # starts PostgreSQL and MongoDB
 cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e .
-cp .env.example .env        # add GROQ_API_KEY, POSTGRES_URL, MONGO_URL
-python -m app.db.seed       # seed synthetic data into Postgres
-python -m app.rag.ingest    # index policy PDFs into Chroma
+pip install -r requirements.txt
+cp .env.example .env        # fill in local development settings as needed
+cd ..
+docker compose --env-file backend/.env up -d
+cd backend
 uvicorn app.main:app --reload
 ```
-API docs: http://localhost:8000/docs
+The initial API exposes `GET /api/health` and interactive docs at http://localhost:8000/docs. The health route confirms that the API process is responding; database dependency checks will be added with persistence.
 
 ### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-UI: http://localhost:5173
+The frontend scaffold will be added in a later phase.
 
 ## Example Output
 

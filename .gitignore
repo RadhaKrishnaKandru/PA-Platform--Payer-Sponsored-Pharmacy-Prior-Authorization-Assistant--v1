@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Generated vector data
+backend/data/chroma/
+
+# Frontend build and dependencies
+node_modules/
+dist/
+
+# Editor and operating system files
+.DS_Store
