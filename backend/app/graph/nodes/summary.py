@@ -2,6 +2,7 @@
 """Final LangGraph node for assembling the PA case summary."""
 
 from app.graph.state import CaseState, CaseSummary
+from app.graph.nodes._trace import traced
 
 
 def _get(obj, key: str, default=None):
@@ -13,6 +14,7 @@ def _get(obj, key: str, default=None):
     return getattr(obj, key, default)
 
 
+@traced("summary")
 def summary_node(state: CaseState) -> dict:
     """Build a final summary from the accumulated workflow state."""
 
@@ -56,35 +58,36 @@ def summary_node(state: CaseState) -> dict:
         )
         current_status = "needs_manual_review"
 
-    # 3. Policy findings
-    if policy_status == "found" and pa_required is True:
-        explanation_parts.append(
-            "The retrieved payer policy indicates that PA is required."
-        )
-    elif policy_status == "found" and pa_required is False:
-        explanation_parts.append(
-            "The retrieved payer policy indicates that PA is not required."
-        )
-    elif policy_status == "conflict":
-        explanation_parts.append(
-            "Retrieved policy evidence conflicts and requires manual review."
-        )
-        current_status = "needs_manual_review"
-    elif policy_status == "low_confidence":
-        explanation_parts.append(
-            "Policy evidence is insufficient for a reliable conclusion."
-        )
-        current_status = "needs_manual_review"
-    elif policy_status == "not_found":
-        explanation_parts.append(
-            "No relevant payer policy was found."
-        )
-        current_status = "needs_manual_review"
-    else:
-        explanation_parts.append(
-            "The PA requirement could not be established."
-        )
-        current_status = "needs_manual_review"
+    # 3. Policy findings are not applicable after inactive coverage stops work.
+    if coverage_status != "inactive":
+        if policy_status == "found" and pa_required is True:
+            explanation_parts.append(
+                "The retrieved payer policy indicates that PA is required."
+            )
+        elif policy_status == "found" and pa_required is False:
+            explanation_parts.append(
+                "The retrieved payer policy indicates that PA is not required."
+            )
+        elif policy_status == "conflict":
+            explanation_parts.append(
+                "Retrieved policy evidence conflicts and requires manual review."
+            )
+            current_status = "needs_manual_review"
+        elif policy_status == "low_confidence":
+            explanation_parts.append(
+                "Policy evidence is insufficient for a reliable conclusion."
+            )
+            current_status = "needs_manual_review"
+        elif policy_status == "not_found":
+            explanation_parts.append(
+                "No relevant payer policy was found."
+            )
+            current_status = "needs_manual_review"
+        else:
+            explanation_parts.append(
+                "The PA requirement could not be established."
+            )
+            current_status = "needs_manual_review"
 
     # 4. Documentation gaps
     if gaps:

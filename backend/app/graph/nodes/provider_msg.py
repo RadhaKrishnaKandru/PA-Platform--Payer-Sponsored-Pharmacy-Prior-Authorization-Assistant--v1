@@ -7,7 +7,8 @@ from app.graph.state import (
     CaseState,
     ProviderMessage,
 )
-from app.llm.client import get_llm
+from app.graph.nodes._trace import traced
+from app.llm.client import STRONG_MODEL, get_llm
 
 
 PROVIDER_MESSAGE_PROMPT = ChatPromptTemplate.from_messages(
@@ -75,6 +76,7 @@ def _safe_fallback() -> ProviderMessage:
     )
 
 
+@traced("provider_msg")
 def provider_msg_node(state: CaseState) -> dict:
     """Generate a provider documentation request for a PA case."""
 
@@ -109,7 +111,7 @@ def provider_msg_node(state: CaseState) -> dict:
     ]
 
     try:
-        llm = get_llm().with_structured_output(ProviderMessage)
+        llm = get_llm(STRONG_MODEL).with_structured_output(ProviderMessage)
         chain = PROVIDER_MESSAGE_PROMPT | llm
 
         result = chain.invoke(
@@ -129,9 +131,12 @@ def provider_msg_node(state: CaseState) -> dict:
                     f"- {gap.item}: {gap.reason}"
                     for gap in gaps
                 ) or "No confirmed documentation gaps identified.",
-                "guardrail_feedback": "\n".join(
-                    state.get("guardrail_errors", [])
-                ) or "None.",
+                "guardrail_feedback": (
+                    "Fix these issues: "
+                    + "; ".join(state.get("guardrail_violations", []))
+                    if state.get("guardrail_violations")
+                    else "None."
+                ),
             }
         )
 

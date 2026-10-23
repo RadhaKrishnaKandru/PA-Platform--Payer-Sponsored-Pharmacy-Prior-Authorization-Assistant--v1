@@ -1,11 +1,11 @@
 
 """LangGraph node for retrieving and interpreting payer PA policies."""
 
-import json
 from langchain_core.prompts import ChatPromptTemplate
 
 from app.graph.state import CaseState, PolicyResult
-from app.llm.client import get_llm
+from app.graph.nodes._trace import traced
+from app.llm.client import STRONG_MODEL, get_llm
 from app.rag.retriever import retrieve_policy_chunks
 
 
@@ -74,6 +74,7 @@ def _metadata_value(metadata: dict, *keys: str):
     return None
 
 
+@traced("policy")
 def policy_node(state: CaseState) -> dict:
     """Retrieve payer policy and interpret its PA requirements."""
 
@@ -162,7 +163,7 @@ def policy_node(state: CaseState) -> dict:
             )
 
         # Ask the LLM to return a structured PolicyResult.
-        llm = get_llm()
+        llm = get_llm(STRONG_MODEL)
         structured_llm = llm.with_structured_output(PolicyResult)
         chain = POLICY_PROMPT | structured_llm
 

@@ -2,6 +2,7 @@
 """LangGraph node for member coverage verification."""
 
 from app.graph.state import CaseState, CoverageResult
+from app.graph.nodes._trace import traced
 from app.tools.coverage import check_member_coverage
 
 
@@ -15,6 +16,7 @@ from app.tools.coverage import check_member_coverage
 # 
 
 
+@traced("coverage")
 def coverage_node(state: CaseState) -> dict:
     """Verify coverage and route cases with unknown or inactive coverage."""
 

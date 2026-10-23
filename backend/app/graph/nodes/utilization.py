@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import Any
 
 from app.graph.state import CaseState, RiskSignal
+from app.graph.nodes._trace import traced
 from app.tools.fills import get_member_fills
 
 
@@ -30,6 +31,7 @@ def _normalize_drug(value: str | None) -> str:
     return " ".join((value or "").lower().split())
 
 
+@traced("utilization")
 def utilization_node(state: CaseState) -> dict:
     """Flag utilization concerns using member claims/fill history."""
 

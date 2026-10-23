@@ -34,28 +34,30 @@ def route_after_coverage(state: CaseState) -> str:
     if status == "active":
         return "policy"
 
-    if status == "inactive":
-        return "summary"
-
-   
     return "summary"
 
 
-def route_after_policy(state: CaseState) -> str:
+def route_after_policy(state: CaseState) -> list[str]:
     """Route according to policy availability and PA requirements."""
     policy = state.get("policy")
 
     policy_status = _value(policy, "status", "not_found")
     pa_required = _value(policy, "pa_required")
 
-    
-    if policy_status != "found" or pa_required is None:
-        return "summary"
+    if policy_status == "found" and pa_required is True:
+        return ["gaps", "utilization"]
+    return ["utilization"]
 
-    if pa_required is False:
-        return "utilization"
 
-    return "gaps"
+def route_after_utilization(state: CaseState) -> list[str]:
+    """Summarize non-PA cases; PA cases continue after the parallel join."""
+    policy = state.get("policy")
+    if (
+        _value(policy, "status") == "found"
+        and _value(policy, "pa_required") is True
+    ):
+        return []
+    return ["summary"]
 
 
 def route_after_guardrail(state: CaseState) -> str:
@@ -68,7 +70,6 @@ def route_after_guardrail(state: CaseState) -> str:
     if attempts < 2:
         return "provider_msg"
 
-   
     return "summary"
 
 
@@ -76,7 +77,6 @@ def build_graph():
     """Construct and compile the PA case-processing graph."""
     graph = StateGraph(CaseState)
 
-    
     graph.add_node("extract", extract_node)
     graph.add_node("coverage", coverage_node)
     graph.add_node("policy", policy_node)
@@ -86,7 +86,6 @@ def build_graph():
     graph.add_node("guardrail", guardrail_node)
     graph.add_node("summary", summary_node)
 
-    
     graph.add_edge(START, "extract")
     graph.add_edge("extract", "coverage")
 
@@ -105,13 +104,11 @@ def build_graph():
         {
             "gaps": "gaps",
             "utilization": "utilization",
-            "summary": "summary",
         },
     )
 
-    
-    graph.add_edge("gaps", "utilization")
-    graph.add_edge("utilization", "provider_msg")
+    graph.add_edge(["gaps", "utilization"], "provider_msg")
+    graph.add_conditional_edges("utilization", route_after_utilization)
     graph.add_edge("provider_msg", "guardrail")
 
     graph.add_conditional_edges(

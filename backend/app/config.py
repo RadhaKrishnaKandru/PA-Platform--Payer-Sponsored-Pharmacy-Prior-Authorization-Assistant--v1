@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     )
 
     groq_api_key: SecretStr | None = None
+    fast_model: str
+    strong_model: str
     postgres_url: str | None = None
     mongo_url: str | None = None
     chroma_dir: Path = Path("data/chroma")

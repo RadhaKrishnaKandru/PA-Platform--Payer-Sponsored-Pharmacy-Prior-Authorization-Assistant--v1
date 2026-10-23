@@ -5,7 +5,8 @@ from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 
 from app.graph.state import CaseState, MissingItem
-from app.llm.client import get_llm
+from app.graph.nodes._trace import traced
+from app.llm.client import FAST_MODEL, get_llm
 from app.rag.retriever import retrieve_policy_chunks
 
 
@@ -60,6 +61,7 @@ Identify the documentation gaps supported by this evidence.
 )
 
 
+@traced("gaps")
 def gaps_node(state: CaseState) -> dict:
     """Compare submitted case information with payer documentation rules."""
 
@@ -124,7 +126,7 @@ def gaps_node(state: CaseState) -> dict:
         else:
             submitted_documents = ", ".join(submitted_documents) or "None listed"
 
-        llm = get_llm()
+        llm = get_llm(FAST_MODEL)
         structured_llm = llm.with_structured_output(GapAnalysis)
         chain = GAPS_PROMPT | structured_llm
 

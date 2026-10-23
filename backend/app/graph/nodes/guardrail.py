@@ -3,7 +3,8 @@
 
 import re
 
-from app.graph.state import CaseState, PolicyResult, ProviderMessage
+from app.graph.state import CaseState, ProviderMessage
+from app.graph.nodes._trace import traced
 
 
 # Block unsupported final determinations.
@@ -119,6 +120,7 @@ def _validate_case(state: CaseState) -> list[str]:
     return failures
 
 
+@traced("guardrail")
 def guardrail_node(state: CaseState) -> dict:
     """Validate workflow outputs and control one retry before safe fallback."""
 
@@ -129,7 +131,7 @@ def guardrail_node(state: CaseState) -> dict:
         return {
             "guardrail_passed": True,
             "guardrail_attempts": attempts,
-            "guardrail_errors": [],
+            "guardrail_violations": [],
         }
 
     next_attempt = attempts + 1
@@ -151,7 +153,7 @@ def guardrail_node(state: CaseState) -> dict:
             "provider_msg": safe_message,
             "guardrail_passed": False,
             "guardrail_attempts": next_attempt,
-            "guardrail_errors": failures,
+            "guardrail_violations": failures,
             "status": "needs_manual_review",
             "errors": [
                 "Guardrail validation failed after one retry. "
@@ -163,5 +165,5 @@ def guardrail_node(state: CaseState) -> dict:
     return {
         "guardrail_passed": False,
         "guardrail_attempts": next_attempt,
-        "guardrail_errors": failures,
+        "guardrail_violations": failures,
     }

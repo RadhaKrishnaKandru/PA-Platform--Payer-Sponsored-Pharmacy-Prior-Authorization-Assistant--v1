@@ -1,5 +1,6 @@
 
-from typing import Literal, NotRequired, TypedDict
+import operator
+from typing import Annotated, Literal, NotRequired, TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -76,10 +77,8 @@ class TraceEvent(BaseModel):
 
 
 class CaseState(TypedDict):
+    erx: dict | str
 
-    erx: dict
-
-   
     rx: NotRequired[PrescriptionData]
     coverage: NotRequired[CoverageResult]
     policy: NotRequired[PolicyResult]
@@ -88,9 +87,9 @@ class CaseState(TypedDict):
     provider_msg: NotRequired[ProviderMessage]
     summary: NotRequired[CaseSummary]
 
-    
-    status: NotRequired[
-        Literal["ok", "stopped", "needs_manual_review"]
-    ]
-    errors: NotRequired[list[str]]
-    trace: NotRequired[list[TraceEvent]]
+    status: NotRequired[Literal["ok", "stopped", "needs_manual_review"]]
+    guardrail_passed: NotRequired[bool]
+    guardrail_attempts: NotRequired[int]
+    guardrail_violations: NotRequired[list[str]]
+    errors: NotRequired[Annotated[list[str], operator.add]]
+    trace: NotRequired[Annotated[list[TraceEvent], operator.add]]
