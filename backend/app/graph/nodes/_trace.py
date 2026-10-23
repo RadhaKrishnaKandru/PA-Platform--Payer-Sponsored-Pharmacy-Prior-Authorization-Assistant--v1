@@ -1,11 +1,14 @@
 """Safe tracing wrapper for graph nodes."""
 
+import logging
 from datetime import datetime, timezone
 from functools import wraps
 from time import monotonic_ns
 from typing import Callable, ParamSpec, TypeVar
 
 from app.graph.state import TraceEvent
+
+logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
 R = TypeVar("R", bound=dict)
@@ -22,16 +25,22 @@ def traced(node_name: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
 
             try:
                 result = node(*args, **kwargs)
-                outcome = (
-                    "skipped"
-                    if result.pop("_trace_skipped", False)
-                    else "failure"
-                    if result.get("status") == "needs_manual_review"
-                    else "success"
-                )
-                if outcome == "failure":
+                if result.pop("_trace_skipped", False):
+                    outcome = "skipped"
+                else:
+                    outcome = "success"
+                if (
+                    outcome == "success"
+                    and result.get("status") == "needs_manual_review"
+                ):
                     error_category = "manual_review"
             except Exception as error:
+                logger.error(
+                    "Node %s failed: %s",
+                    node_name,
+                    type(error).__name__,
+                    exc_info=False,
+                )
                 result = {
                     "status": "needs_manual_review",
                     "errors": ["Node execution failed. Manual review is required."],

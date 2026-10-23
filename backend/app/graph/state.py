@@ -5,6 +5,17 @@ from typing import Annotated, Literal, NotRequired, TypedDict
 from pydantic import BaseModel, Field
 
 
+_STATUS_RANK = {"ok": 0, "needs_manual_review": 1, "stopped": 2}
+
+
+def worst_status(
+    a: Literal["ok", "stopped", "needs_manual_review"],
+    b: Literal["ok", "stopped", "needs_manual_review"],
+) -> Literal["ok", "stopped", "needs_manual_review"]:
+    """Return the more restrictive status when graph branches merge."""
+    return a if _STATUS_RANK[a] >= _STATUS_RANK[b] else b
+
+
 
 
 class PrescriptionData(BaseModel):
@@ -87,7 +98,12 @@ class CaseState(TypedDict):
     provider_msg: NotRequired[ProviderMessage]
     summary: NotRequired[CaseSummary]
 
-    status: NotRequired[Literal["ok", "stopped", "needs_manual_review"]]
+    status: NotRequired[
+        Annotated[
+            Literal["ok", "stopped", "needs_manual_review"],
+            worst_status,
+        ]
+    ]
     guardrail_passed: NotRequired[bool]
     guardrail_attempts: NotRequired[int]
     guardrail_violations: NotRequired[list[str]]

@@ -17,6 +17,7 @@ sys.modules.setdefault("app.rag.retriever", retriever_module)
 from app.graph.builder import pa_graph
 from app.graph.nodes import coverage, gaps, policy, provider_msg, utilization
 from app.graph.nodes.gaps import GapAnalysis
+from app.graph.nodes._trace import traced
 from app.graph.state import (
     CoverageResult,
     PolicyCitation,
@@ -229,3 +230,45 @@ def test_policy_not_found_requires_manual_review(configure_graph) -> None:
         result,
         {"extract", "coverage", "policy", "utilization", "summary"},
     )
+
+
+def test_parallel_node_errors_merge_and_complete(configure_graph, monkeypatch) -> None:
+    configure_graph(policy_status="found", pa_required=True)
+
+    def raise_gap_error(**_kwargs):
+        raise ValueError("Synthetic retrieval failure.")
+
+    def raise_utilization_error(_member_id):
+        raise ValueError("Synthetic fill lookup failure.")
+
+    monkeypatch.setattr(gaps, "retrieve_policy_chunks", raise_gap_error)
+    monkeypatch.setattr(utilization, "get_member_fills", raise_utilization_error)
+
+    result = pa_graph.invoke(_case())
+
+    assert result["status"] == "needs_manual_review"
+    assert result["summary"].status == "needs_manual_review"
+    _assert_trace(
+        result,
+        {
+            "extract",
+            "coverage",
+            "policy",
+            "gaps",
+            "utilization",
+            "provider_msg",
+            "guardrail",
+            "summary",
+        },
+    )
+
+
+def test_manual_review_return_is_traced_as_success() -> None:
+    @traced("test_node")
+    def node(_state: dict) -> dict:
+        return {"status": "needs_manual_review"}
+
+    result = node({})
+
+    assert result["trace"][0].outcome == "success"
+    assert result["trace"][0].error_category == "manual_review"

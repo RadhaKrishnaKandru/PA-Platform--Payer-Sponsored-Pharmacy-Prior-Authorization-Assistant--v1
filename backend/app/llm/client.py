@@ -15,10 +15,14 @@ def get_llm(
     temperature: float = 0,
 ) -> ChatGroq:
     """Create or return the cached Groq chat model for these settings."""
+    settings = get_settings()
+    if settings.groq_api_key is None:
+        raise RuntimeError("GROQ_API_KEY is not set. Add it to backend/.env.")
+
     return ChatGroq(
         model=model,
         temperature=temperature,
         reasoning_format="parsed",
-        api_key=get_settings().groq_api_key,
+        api_key=settings.groq_api_key.get_secret_value(),
         max_retries=4,
     )
