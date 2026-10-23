@@ -11,7 +11,7 @@ Multi-agent AI assistant for network pharmacists. Given an eRx, answer:
 4. What should be requested from the provider?
 5. Any eligibility or utilization concerns?
 
-**Hard rules:** The system NEVER approves/denies a prescription, NEVER recommends medications or alternatives, NEVER predicts approval. It informs and drafts only. Output guardrail must enforce this.
+**Hard rules:** The system NEVER approves/denies a prescription, NEVER recommends medications or alternatives, NEVER predicts approval. It informs and drafts only. The output guardrail must enforce this.
 
 ## 3. Users
 Pharmacist (primary), Pharmacy Technician, PA team. Owner/funder: payer.
@@ -19,55 +19,60 @@ Pharmacist (primary), Pharmacy Technician, PA team. Owner/funder: payer.
 ## 4. Scope & Compliance
 - v1 uses ONLY synthetic data. No real PHI. State this in README.
 - Design HIPAA-aligned: minimum necessary, no PHI in logs, no secrets in code.
-- v2 adds: Presidio PHI redaction before LLM calls, audit log, RBAC, human approval, FHIR, Postgres/pgvector, Docker, CI.
+- v2 adds: Presidio PHI redaction before LLM calls, audit log, RBAC, human approval, FHIR, Postgres/pgvector, MongoDB auth, CI.
 
 ## 5. Tech Stack
-- Backend: Python 3.11, FastAPI, Pydantic v2
+- Backend: Python 3.11+ (tested on 3.14), FastAPI, Pydantic v2
 - Relational DB: PostgreSQL (SQLAlchemy + psycopg): members, coverage, formulary, fills, claims_history, providers
-- Document DB: MongoDB (pymongo/motor): cases (eRx input + full CaseState result), provider_messages, trace events
+- Document DB: MongoDB (pymongo): cases (eRx input + full CaseState result), provider_messages, trace events
 - Vector store: Chroma (v1; pgvector planned for v2)
 - Orchestration: LangGraph (typed shared state, conditional edges)
-- LLM: open-source model via Groq (langchain-groq), temperature 0, structured output
+- LLM: open-source models via Groq (langchain-groq), temperature 0, structured output
 - Embeddings: local HuggingFace bge-small
 - Frontend: React + TypeScript + Vite
 - Infra: docker-compose (postgres, mongo) in v1
 - Tests: pytest
 
 ## 6. Design Principles
-- Deterministic code for lookups/rules (coverage, formulary, fills, quantity limits, early refill, duplicates). LLM only for: eRx extraction, policy interpretation (RAG), gap analysis, provider message drafting.
-- Every data source sits behind a function interface in `tools/` (v2 swaps SQLite for FHIR without changing the graph).
+- Deterministic code for lookups/rules (coverage, formulary, fills, quantity limits, early refill, duplicates). LLM only for: eRx extraction (when needed), policy interpretation (RAG), gap analysis, provider message drafting.
+- Every data source sits behind a function interface in `tools/` (v2 swaps in FHIR without changing the graph).
 - Every policy claim must carry a citation (doc, page, section). If policy not found or retrieval confidence is low: status = `needs_manual_review`. Never guess.
 - All node inputs/outputs are Pydantic models. No free-text passing between nodes.
+- LLM models come from settings: `FAST_MODEL` (default openai/gpt-oss-20b) for extract and gaps, `STRONG_MODEL` (default openai/gpt-oss-120b) for policy and provider_msg. Always use `get_llm()` from `app/llm/client.py`. Groq free tier is rate limited (about 8k tokens per minute), so keep prompts short and send at most 3 retrieved chunks.
 - Type hints everywhere, small pure functions, docstrings, no PHI in logs.
 
 ## 7. Graph (LangGraph)
-Nodes: extract -> coverage -> policy -> (gaps || utilization) -> guardrail -> provider_msg -> summary
+Flow: extract -> coverage -> policy -> (gaps || utilization) -> provider_msg -> guardrail -> summary
 
-Routing:
-- coverage inactive -> END (status=stopped, with reason)
-- policy: pa_required=false -> skip gaps/provider_msg, run utilization -> summary
-- policy not found/low confidence -> status=needs_manual_review -> summary
-- guardrail fail -> regenerate once, then fall back to safe template
+Routing (see `graph/builder.py`):
+- coverage not active -> summary (status=stopped, with reason)
+- policy found and pa_required=true -> gaps and utilization run in parallel, join, then provider_msg -> guardrail
+- policy found and pa_required=false -> utilization -> summary (no provider_msg)
+- policy not found / low confidence / conflict -> utilization -> summary with status=needs_manual_review
+- guardrail fail -> regenerate provider_msg using `guardrail_violations` (max 2 attempts), then summary with needs_manual_review
 
 Node types:
 | Node | Type |
 |---|---|
-| extract | LLM structured output (drug, NDC, qty, days_supply, prescriber, dx) |
+| extract | code first; LLM only when fields are missing or input is free text |
 | coverage | code (member eligibility, plan, dates) |
 | policy | formulary lookup (code) + RAG retrieval + LLM summary with citations |
 | gaps | LLM + rules (required docs vs provided data) |
 | utilization | code (early refill, duplicate therapy, qty limit, prior claims/PA history) |
-| guardrail | code (regex/validator blocking approve/deny/recommend language) |
 | provider_msg | LLM, template-constrained (fax, email, portal note) |
+| guardrail | code (blocks approve/deny/recommend/predict language, enforces draft status) |
 | summary | code (assemble dashboard payload) |
 
 ## 8. CaseState
-erx, rx, coverage, policy (pa_required, reasons[], citations[]), gaps[] (MissingItem), utilization[] (RiskSignal: type, severity, detail), provider_msg, summary, status (ok|stopped|needs_manual_review), errors[], trace[] (event: node, timestamp, outcome; no PHI).
+Fields: erx, rx, coverage, policy (status, pa_required, reasons[], citations[]), gaps[], utilization[], provider_msg, summary, status, guardrail_passed, guardrail_attempts, guardrail_violations[], errors[], trace[].
+- `status` uses a reducer (`worst_status`: stopped > needs_manual_review > ok) so parallel nodes can both write it.
+- `errors` and `trace` use `operator.add` reducers: nodes return only NEW items, never the full list.
+- Every node is wrapped with `@traced("name")` from `graph/nodes/_trace.py` (no PHI in trace events: only node, time, outcome, duration, error category).
 
 ## 9. RAG
 - Ingest: PDF -> section-aware chunks (criteria, documentation, step therapy, quantity limits)
 - Metadata: payer, plan, drug, policy_version, effective_date, page
-- Retrieve: metadata filter first, then semantic top-k
+- Retrieve: metadata filter first, then semantic top-k via `retrieve_policy_chunks(drug=, ndc=, plan_id=)` in `rag/retriever.py` (currently a stub returning [])
 - Post-check: every citation must reference a retrieved chunk
 
 ## 10. Data (synthetic only)
@@ -76,11 +81,13 @@ erx, rx, coverage, policy (pa_required, reasons[], citations[]), gaps[] (Missing
 - Chroma: policy chunks with metadata (payer, plan, drug, policy_version, effective_date, page).
 - Policies: 3-5 sample PDFs (e.g., GLP-1, biologic, opioid with qty limits).
 - Deterministic tools read Postgres only. Graph results and traces are written to Mongo.
+
 ## 11. API
 - POST /api/cases: body eRx JSON, runs graph, saves to Mongo, returns result
 - GET /api/cases/{id}: reads from Mongo
 - GET /api/health: checks Postgres, Mongo, Chroma
-CORS enabled for the Vite dev server. Config via `.env` (see `.env.example`).
+CORS is limited to the Vite dev origins (localhost:5173). Config via `backend/.env` (see `backend/.env.example`).
+
 ## 12. Frontend
 Pages: NewCase (eRx form/JSON upload), CaseResult (dashboard). Cards: Coverage, PA required + reason, Missing info, Risk signals, Provider message (copy buttons), Citations.
 
@@ -98,24 +105,27 @@ pa-platform/
 │   └── copilot-instructions.md
 ├── backend/
 │   ├── pyproject.toml
-│   ├── .env               # GROQ_API_KEY, POSTGRES_URL, MONGO_URL, CHROMA_DIR
+│   ├── requirements.txt
+│   ├── .env.example                # placeholders only; copy to backend/.env (never commit .env)
 │   ├── app/
 │   │   ├── main.py                 # FastAPI entry, CORS
 │   │   ├── config.py               # settings from env
 │   │   ├── api/
-│   │   │   ├── routes_cases.py     # POST /api/cases, GET /api/cases/{id}, GET /api/health
+│   │   │   ├── routes_health.py    # GET /api/health
+│   │   │   ├── routes_cases.py     # POST /api/cases, GET /api/cases/{id}
 │   │   │   └── schemas.py
 │   │   ├── graph/
-│   │   │   ├── state.py            # CaseState
+│   │   │   ├── state.py            # CaseState + reducers
 │   │   │   ├── builder.py          # LangGraph wiring + routing
 │   │   │   └── nodes/
+│   │   │       ├── _trace.py       # @traced decorator
 │   │   │       ├── extract.py
 │   │   │       ├── coverage.py
 │   │   │       ├── policy.py
 │   │   │       ├── gaps.py
 │   │   │       ├── utilization.py
-│   │   │       ├── guardrail.py
 │   │   │       ├── provider_msg.py
+│   │   │       ├── guardrail.py
 │   │   │       └── summary.py
 │   │   ├── tools/                  # deterministic data access (Postgres)
 │   │   │   ├── coverage.py
@@ -127,21 +137,20 @@ pa-platform/
 │   │   │   ├── retriever.py
 │   │   │   └── prompts.py
 │   │   ├── llm/
-│   │   │   └── client.py           # Groq via LangChain
-│   │   ├── db/
-│   │   │   ├── postgres.py         # engine, session
-│   │   │   ├── models.py           # SQLAlchemy tables
-│   │   │   ├── mongo.py            # client, collections
-│   │   │   └── seed.py             # seeds Postgres
-│   │   └── core/
-│   │       └── logging.py          # trace events, no PHI
+│   │   │   └── client.py           # get_llm(), Groq via LangChain
+│   │   └── db/
+│   │       ├── postgres.py         # engine, session
+│   │       ├── models.py           # SQLAlchemy tables
+│   │       ├── mongo.py            # client, collections
+│   │       └── seed.py             # seeds Postgres
 │   ├── data/
 │   │   ├── policies/               # sample policy PDFs
 │   │   ├── erx_samples/            # JSON eRx test inputs
 │   │   └── chroma/                 # vector store (gitignored)
 │   └── tests/
-│       ├── test_tools.py
+│       ├── test_health.py
 │       ├── test_graph.py
+│       ├── test_tools.py
 │       └── eval/
 │           ├── golden_cases.json
 │           └── run_eval.py
@@ -168,7 +177,14 @@ pa-platform/
 ```
 
 ## 15. Build Order
-1 setup -> 2 data/seed -> 3 tools + tests -> 4 state + graph with stub nodes -> 5 RAG -> 6 LLM nodes + guardrail -> 7 eval -> 8 API + React UI + README.
+Done: setup, graph with traced nodes and tests, LLM factory, rag stub.
+Next: Postgres models + seed -> real tools + tests -> RAG ingest/retriever -> API (Mongo) -> eval -> React UI -> README/diagram/tag v1.0.
 
 ## 16. v1 Non-Goals
-Auth, PHI redaction, FHIR, immutable audit log, human-approval interrupts, CI, pgvector. (All v2.)
+Auth, PHI redaction, FHIR, immutable audit log, human-approval interrupts, CI, pgvector, MongoDB auth. (All v2.)
+
+## 17. Conventions
+- Never commit `.env`, keys, or real data. `.env.example` holds placeholders only (optional settings commented out).
+- Tests mock the LLM; no test calls Groq. Run `python -m pytest` from `backend/`.
+- No PHI in logs, traces, or error messages.
+- Prefer minimal diffs; do not rewrite files that were not asked about.
