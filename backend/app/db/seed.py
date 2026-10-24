@@ -76,11 +76,12 @@ def seed() -> None:
             plan_id="PLAN-A",
             drug_name="Oxycodone",
             ndc="00000-0004-04",
-            pa_required=False,
+            pa_required=True,
             qty_limit=60,
             qty_limit_days=30,
             step_therapy_required=False,
             step_drug_names=[],
+            policy_doc="opioid_policy.pdf",
         ),
         FormularyEntry(
             plan_id="PLAN-A",
