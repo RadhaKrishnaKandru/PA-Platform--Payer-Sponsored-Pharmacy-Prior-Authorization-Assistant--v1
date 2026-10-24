@@ -1,18 +1,8 @@
 """Graph integration tests with deterministic synthetic dependencies."""
 
-import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 import pytest
-
-# The RAG implementation is not part of this build step; graph behavior is
-# tested with synthetic retrieval results below.
-rag_package = ModuleType("app.rag")
-rag_package.__path__ = []
-retriever_module = ModuleType("app.rag.retriever")
-retriever_module.retrieve_policy_chunks = lambda **_kwargs: []
-sys.modules.setdefault("app.rag", rag_package)
-sys.modules.setdefault("app.rag.retriever", retriever_module)
 
 from app.graph.builder import pa_graph
 from app.graph.nodes import coverage, gaps, policy, provider_msg, utilization

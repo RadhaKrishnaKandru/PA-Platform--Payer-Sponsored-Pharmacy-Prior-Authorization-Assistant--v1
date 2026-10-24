@@ -93,6 +93,7 @@ def gaps_node(state: CaseState) -> dict:
             drug=rx.drug,
             ndc=rx.ndc,
             plan_id=coverage.plan_id,
+            focus="documentation",
         )
 
         if not documents:

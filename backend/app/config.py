@@ -3,7 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     postgres_url: SecretStr | None = None
     mongo_url: str | None = None
     chroma_dir: Path = Path("data/chroma")
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    rag_top_k: int = Field(default=3, ge=1)
+    rag_min_score: float = Field(default=0.25, ge=0.0, le=1.0)
+    policies_dir: Path = Path("data/policies")
+    chroma_collection: str = "policies"
 
 
 @lru_cache
