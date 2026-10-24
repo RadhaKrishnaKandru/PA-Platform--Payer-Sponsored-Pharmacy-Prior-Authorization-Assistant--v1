@@ -133,9 +133,9 @@ pa-platform/
 │   │   │   ├── fills.py
 │   │   │   └── providers.py
 │   │   ├── rag/
+│   │   │   ├── embeddings.py
 │   │   │   ├── ingest.py
 │   │   │   ├── retriever.py
-│   │   │   └── prompts.py
 │   │   ├── llm/
 │   │   │   └── client.py           # get_llm(), Groq via LangChain
 │   │   └── db/
@@ -177,8 +177,7 @@ pa-platform/
 ```
 
 ## 15. Build Order
-Done: setup, graph with traced nodes and tests, LLM factory, rag stub.
-Next: Postgres models + seed -> real tools + tests -> RAG ingest/retriever -> API (Mongo) -> eval -> React UI -> README/diagram/tag v1.0.
+Done: setup, traced graph and tests, LLM factory, Postgres models + seed + real tools, policy RAG (ingest + retriever). Next: Mongo + case API -> live Groq tuning -> eval -> React UI -> README/diagram/tag v1.0.
 
 ## 16. v1 Non-Goals
 Auth, PHI redaction, FHIR, immutable audit log, human-approval interrupts, CI, pgvector, MongoDB auth. (All v2.)

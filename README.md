@@ -4,7 +4,7 @@ A multi-agent AI assistant that helps network pharmacists identify Prior Authori
 
 > **Synthetic data only.** This is a personal learning project. It contains no real PHI and is **not** a certified HIPAA-compliant system. It is designed HIPAA-aligned (minimum necessary, no PHI in logs, no secrets in code).
 
-**Status:** v1 in development. The LangGraph workflow, tracing, guardrails, LLM factory, and local policy RAG are built and tested. Postgres/Mongo persistence, case API, evaluation harness, and React UI are in progress.
+**Status:** v1 in development. The LangGraph workflow, tracing, guardrails, LLM factory, PostgreSQL data layer with real tools, and local policy RAG are built and tested. MongoDB persistence, the case API, evaluation harness, and React UI are in progress.
 
 ## Problem
 Pharmacists often learn a drug needs PA only after claim rejection, causing treatment delays, prescription abandonment, repeated provider calls, and incomplete PA submissions. Payers also need early signals of misuse (early refills, duplicate therapy, quantity-limit breaches).
@@ -58,9 +58,9 @@ pa-platform/
 │   │   ├── api/              # routes, schemas
 │   │   ├── graph/            # state, builder, nodes/
 │   │   ├── tools/            # coverage, formulary, fills, providers
-│   │   ├── rag/              # ingest, retriever, prompts
+│   │   ├── rag/              # embeddings, ingest, retriever
 │   │   ├── llm/              # Groq client factory
-│   │   └── db/               # postgres, mongo, models, seed (planned)
+│   │   └── db/               # postgres, models, seed (mongo planned)
 │   ├── data/                 # policies/, erx_samples/
 │   └── tests/                # unit tests + eval/
 └── frontend/                 # React + Vite UI (planned)

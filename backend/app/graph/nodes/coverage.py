@@ -9,16 +9,6 @@ from app.tools.coverage import (
 )
 
 
-
-
-# class CoverageResult(BaseModel):
-    # status: Literal["active", "inactive", "unknown"]
-    # member_id: str | None = None
-    # plan_id: str | None = None
-    # reason: str | None = None
-# 
-
-
 @traced("coverage")
 def coverage_node(state: CaseState) -> dict:
     """Verify coverage and route cases with unknown or inactive coverage."""

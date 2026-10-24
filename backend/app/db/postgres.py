@@ -63,7 +63,7 @@ def get_session() -> Generator[Session, None, None]:
         try:
             yield session
         except SQLAlchemyError as error:
-            raise RuntimeError("Unable to connect to PostgreSQL.") from error
+            raise RuntimeError("Database error.") from error
 
 
 def init_db() -> None:
