@@ -1,18 +1,17 @@
 """Integration tests for PostgreSQL seed data."""
 
-import os
-
 import pytest
 from sqlalchemy import func, select
 
+from app.config import get_settings
 from app.db.models import Base, FormularyEntry
 from app.db.postgres import get_session
 from app.db.seed import seed
 
-
+postgres_url = get_settings().postgres_url
 pytestmark = pytest.mark.skipif(
-    not os.environ.get("POSTGRES_URL"),
-    reason="Set POSTGRES_URL explicitly to run PostgreSQL integration tests.",
+    postgres_url is None or not postgres_url.get_secret_value().strip(),
+    reason="Set POSTGRES_URL in backend/.env or the shell to run PostgreSQL integration tests.",
 )
 
 

@@ -1,19 +1,18 @@
 """Integration tests for deterministic PostgreSQL tools and utilization rules."""
 
-import os
-
 import pytest
 
+from app.config import get_settings
 from app.db.seed import seed
 from app.graph.nodes.utilization import utilization_node
 from app.graph.state import CoverageResult, PrescriptionData, RiskSignal
 from app.tools.coverage import MemberCoveragePrescription, check_member_coverage
 from app.tools.formulary import get_formulary_entry
 
-
+postgres_url = get_settings().postgres_url
 pytestmark = pytest.mark.skipif(
-    not os.environ.get("POSTGRES_URL"),
-    reason="Set POSTGRES_URL explicitly to run PostgreSQL integration tests.",
+    postgres_url is None or not postgres_url.get_secret_value().strip(),
+    reason="Set POSTGRES_URL in backend/.env or the shell to run PostgreSQL integration tests.",
 )
 
 

@@ -24,13 +24,12 @@ Pharmacist (primary), Pharmacy Technician, PA team. Owner/funder: payer.
 ## 5. Tech Stack
 - Backend: Python 3.11+ (tested on 3.14), FastAPI, Pydantic v2
 - Relational DB: PostgreSQL (SQLAlchemy + psycopg): members, coverage, formulary, fills, claims_history, providers
-- Document DB: MongoDB (pymongo): cases (eRx input + full CaseState result), provider_messages, trace events
+- Document DB: MongoDB (hosted, e.g. Atlas free tier)
 - Vector store: Chroma (v1; pgvector planned for v2)
 - Orchestration: LangGraph (typed shared state, conditional edges)
 - LLM: open-source models via Groq (langchain-groq), temperature 0, structured output
 - Embeddings: local HuggingFace bge-small
 - Frontend: React + TypeScript + Vite
-- Infra: docker-compose (postgres, mongo) in v1
 - Tests: pytest
 
 ## 6. Design Principles
@@ -99,7 +98,6 @@ Pages: NewCase (eRx form/JSON upload), CaseResult (dashboard). Cards: Coverage, 
 ```
 pa-platform/
 ├── README.md
-├── docker-compose.yml              # postgres + mongo
 ├── .gitignore
 ├── .github/
 │   └── copilot-instructions.md
@@ -186,4 +184,5 @@ Auth, PHI redaction, FHIR, immutable audit log, human-approval interrupts, CI, p
 - Never commit `.env`, keys, or real data. `.env.example` holds placeholders only (optional settings commented out).
 - Tests mock the LLM; no test calls Groq. Run `python -m pytest` from `backend/`.
 - No PHI in logs, traces, or error messages.
+- No Docker; use local PostgreSQL and a hosted MongoDB. POSTGRES_URL must use the postgresql+psycopg:// form.
 - Prefer minimal diffs; do not rewrite files that were not asked about.
