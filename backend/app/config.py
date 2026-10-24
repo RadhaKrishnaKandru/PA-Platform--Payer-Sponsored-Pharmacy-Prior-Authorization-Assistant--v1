@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     groq_api_key: SecretStr | None = None
     fast_model: str = "openai/gpt-oss-20b"
     strong_model: str = "openai/gpt-oss-120b"
-    postgres_url: str | None = None
+    postgres_url: SecretStr | None = None
     mongo_url: str | None = None
     chroma_dir: Path = Path("data/chroma")
 

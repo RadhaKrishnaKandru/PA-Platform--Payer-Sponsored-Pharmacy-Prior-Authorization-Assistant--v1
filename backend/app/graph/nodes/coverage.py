@@ -3,7 +3,10 @@
 
 from app.graph.state import CaseState, CoverageResult
 from app.graph.nodes._trace import traced
-from app.tools.coverage import check_member_coverage
+from app.tools.coverage import (
+    MemberCoveragePrescription,
+    check_member_coverage,
+)
 
 
 
@@ -32,7 +35,12 @@ def coverage_node(state: CaseState) -> dict:
 
     try:
         # Deterministic lookup against PostgreSQL through the tools layer.
-        result = check_member_coverage(rx)
+        erx = state.get("erx")
+        member_id = erx.get("member_id") if isinstance(erx, dict) else None
+        lookup_rx = MemberCoveragePrescription.model_validate(
+            {**rx.model_dump(), "member_id": member_id}
+        )
+        result = check_member_coverage(lookup_rx)
 
         if not isinstance(result, CoverageResult):
             result = CoverageResult.model_validate(result)

@@ -91,6 +91,9 @@ The local MongoDB service has no authentication and is bound to `127.0.0.1` only
 
 The initial API exposes `GET /api/health` and interactive docs at http://localhost:8000/docs. The health route confirms that the API process is responding; database dependency checks will be added with persistence.
 
+### Data management
+The v1 data layer is read-only for application workflows. Its synthetic PostgreSQL data is populated with `python -m app.db.seed` from `backend/`. Payer-admin import and upload workflows are planned for v2.
+
 ### Frontend
 The frontend scaffold will be added in a later phase.
 

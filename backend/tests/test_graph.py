@@ -147,6 +147,10 @@ def configure_graph(monkeypatch: pytest.MonkeyPatch):
             ),
         )
         monkeypatch.setattr(utilization, "get_member_fills", lambda _member_id: [])
+        monkeypatch.setattr(utilization, "get_member_claims", lambda _member_id: [])
+        monkeypatch.setattr(
+            utilization, "get_formulary_entry", lambda *_args, **_kwargs: None
+        )
 
     return configure
 
